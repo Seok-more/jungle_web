@@ -43,6 +43,10 @@ app.get('/', (_req, res) => {
   res.send('Hello World~!');
 });
 
+app.get('/api/hello', (req, res) => {
+  res.send("hello")
+})
+
 // 회원가입
 app.post('/api/users/register', async (req, res) => {
   try {
