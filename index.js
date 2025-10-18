@@ -7,6 +7,8 @@ const config = require('./config/key');
 const cookieParser = require('cookie-parser');
 const bcrypt = require('bcrypt'); // ✅ 수정: 비밀번호 비교용
 
+const {auth} = require('./middleware/auth');
+
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -34,6 +36,8 @@ const MONGO_URI =
 app.get('/', (_req, res) => {
   res.send('Hello World~!');
 });
+
+
 
 // ✅ 회원가입 (async/await 버전)
 app.post('/register', async (req, res) => {
@@ -100,6 +104,23 @@ app.post('/login', async (req, res) => {
     });
   }
 });
+
+app.get('/api/users/auth', auth ,(req, res) => {
+  // 여기까지 미들웨어를 통과해 왔다는 얘기는 Authen이 True임
+  res.status(200).json({
+    _id: req.user._id,
+    isAdmin: req.user.role === 0? false : true,
+    isAuth: true,
+    email:req.user.email,
+    name: req.user.name,
+    lastname: req.user.lastname,
+    role: req.user.role,
+    image: req.user.image
+  })
+
+})
+
+
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
