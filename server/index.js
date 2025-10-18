@@ -7,7 +7,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
 const { User } = require('./models/User');
-const config = require('../config/key');
+const config = require('./config/key');
 
 // ⬇️ auth 경로는 실제 파일 위치에 맞추세요.
 //   - 루트/middleware/auth.js  → './middleware/auth'
