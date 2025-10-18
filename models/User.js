@@ -1,100 +1,55 @@
+// models/User.js
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
-const saltRounds = 10
-const jwt = require('jsonwebtoken')
+const jwt = require('jsonwebtoken');
 
-const userSchema = mongoose.Schema({
-    name: {
-        type: String,
-        maxlength: 50
-    },
-    email: {
-        type: String,
-        trim: true,
-        unique: 1
-    },
-    password: {
-        type: String,
-        minlength: 5
-    },
-    lastname: {
-        type : String,
-        maxlength: 50
-    },
-    role: {
-        type: Number,
-        default: 0
-    },
-    image: {
-        String
-    },
-    token: {
-        type: String
-    },
-    tokenExp: {
-        type: Number
-    }
-})
+const SALT_ROUNDS = 10;
+// 실제 서비스에선 하드코딩 말고 환경변수 사용 권장: process.env.JWT_SECRET
+const JWT_SECRET = 'secretToken';
 
-userSchema.pre('save', function( next ){
-    var user = this;
+// ✅ 스키마 정의 (오타/옵션 수정)
+const userSchema = new mongoose.Schema({
+  name: { type: String, maxlength: 50 },
+  email: { type: String, trim: true, unique: true },     // ✅ unique: true
+  password: { type: String, minlength: 5 },
+  lastname: { type: String, maxlength: 50 },
+  role: { type: Number, default: 0 },
+  image: { type: String },                                // ✅ 올바른 정의
+  token: { type: String },
+  tokenExp: { type: Number },
+});
 
-    if(user.isModified('password'))
-    {
-        bcrypt.genSalt(saltRounds, function(err, salt) {
-        if(err) return next(err)
-        bcrypt.hash(user.password, salt, function(err, hash) {
-            if(err) return next(err)
-            user.password = hash
-            next()
-        })
-    })      
+// ✅ 비밀번호 해시 (콜백 → async/await)
+userSchema.pre('save', async function (next) {
+  try {
+    if (!this.isModified('password')) return next();
 
-    } else {
-        next()
-    }
-})
+    const salt = await bcrypt.genSalt(SALT_ROUNDS);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
 
-userSchema.methods.comparePassword = function(palinPassword, cb) {
-    bcrypt.compare(palinPassword, this.password, function(err, isMatch){
-        if(err) return cb(err),
-        cb(null, isMatch)
-    })
-}
+// ✅ 비밀번호 비교 (콜백 → Promise/await, 오타 수정: palinPassword → plainPassword)
+userSchema.methods.comparePassword = async function (plainPassword) {
+  return bcrypt.compare(plainPassword, this.password);
+};
 
-userSchema.methods.generateToken = function(cb) {
-    var user = this;
+// ✅ 토큰 생성/저장 (콜백 → async/await, 버그 수정: useReducer._id → user._id)
+userSchema.methods.generateToken = async function () {
+  const token = jwt.sign({ userId: this._id }, JWT_SECRET, { expiresIn: '1h' });
+  this.token = token;
+  await this.save();
+  return token;
+};
 
-    // jsonwebtoken으로 토큰생성
+// ✅ 토큰으로 유저 찾기 (콜백 → async/await)
+userSchema.statics.findByToken = async function (token) {
+  const decoded = jwt.verify(token, JWT_SECRET); // throw 되면 상위에서 catch
+  return this.findOne({ _id: decoded.userId, token });
+};
 
-    var token = jwt.sign(useReducer._id, 'secretToken')
-    
-    user.token = token
-    user.save(function(err, user) {
-        if(err) return cb(err)
-        cb(null, user)
-    })
-}
-
-userSchema.statics.findByToken = function(token, cb) {
-    var user = this;
-
-    // 토큰을 디코드함
-    jwt.verify(token, 'secretToken', function(err, decoded) {
-        // 유저 아이디를 이용해서 유저를 찾고
-        // 클라이언트에서 가져온 token, DB에 보관된 토큰이 일치하는지 확인
-
-        user.findOne({"_id" : decoded, "token": token}, function (err, user) {
-            if (err) return cb(err);
-            cb(null, user)
-        }
-
-        )
-    }
-)
-
-}
-
-const User = mongoose.model('User', userSchema)
-
-module.exports = {User}
+const User = mongoose.model('User', userSchema);
+module.exports = { User };
