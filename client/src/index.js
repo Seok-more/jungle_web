@@ -8,7 +8,6 @@ import promise from 'redux-promise';
 import { thunk } from 'redux-thunk';               // ✅ 수정: default → named imp
 import rootReducer from './_reducers';           // 예: ./_reducers/index.js
 
-import 'antd/dist/antd.css'
 
 // Redux DevTools 연동 (없으면 compose 사용)
 const composeEnhancers =
