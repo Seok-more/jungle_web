@@ -1,40 +1,64 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom'; // 로그아웃 후 페이지 이동용
+import { Link, useNavigate } from 'react-router-dom';
 
 function LandingPage() {
   const navigate = useNavigate();
+  const [user, setUser] = useState(null); // null = unknown, false = not auth, object = user
 
-  // 페이지 로드 시 서버에 요청 보내기
   useEffect(() => {
-    axios.get('/api/hello')
-      .then(response => console.log(response.data))
-      .catch(error => console.error(error));
+    axios.get('/api/users/auth')
+      .then(response => {
+        if (response.data && response.data.isAuth) {
+          setUser(response.data);
+        } else {
+          setUser(false);
+        }
+      })
+      .catch(() => setUser(false));
   }, []);
 
-  // ✅ 로그아웃 버튼 클릭 시 실행할 함수
-  const onClickHandler = () => {
+  const onLogout = () => {
     axios.get('/api/users/logout')
       .then(response => {
         if (response.data.success) {
-          navigate('/login'); // 로그아웃 후 로그인 페이지로 이동
+          setUser(false);
+          navigate('/login');
         } else {
           alert('로그아웃 실패');
         }
       })
-      .catch(error => console.error(error));
+      .catch(err => {
+        console.error(err);
+        alert('로그아웃 중 오류가 발생했습니다.');
+      });
   };
 
   return (
-    <div style={{
-      display: 'flex', justifyContent: 'center', alignItems: 'center',
-      width: '100%', height: '100vh'
-    }}>
-      <h2>시작 페이지</h2>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+      <h2>게시판 예제</h2>
 
-      <button onClick={onClickHandler}>
-        로그아웃
-      </button>
+      {user === null && <div>로딩중...</div>}
+
+      {user === false && (
+        <>
+          <p>로그인 또는 회원가입하여 게시판을 이용하세요.</p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Link to="/login"><button type="button">로그인</button></Link>
+            <Link to="/register"><button type="button">회원가입</button></Link>
+          </div>
+        </>
+      )}
+
+      {user && (
+        <>
+          <p>{user.name ? `${user.name}님 환영합니다.` : '로그인 상태입니다.'}</p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button type="button" onClick={() => navigate('/')}>홈으로</button>
+            <button type="button" onClick={onLogout}>로그아웃</button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
